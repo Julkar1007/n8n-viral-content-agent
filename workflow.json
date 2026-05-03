@@ -1,0 +1,871 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/streamers~youtube-scraper/run-sync-get-dataset-items",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_APIFY_API_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"searchQueries\": $json.searchQueries, \"maxResults\": 5, \"maxResultsShorts\": 0, \"maxResultsStreams\": 0, \"downloadSubtitles\": true } }}",
+        "options": {}
+      },
+      "id": "e777b3a1-b550-41d5-801b-19047ba6a6ce",
+      "name": "YouTube Scraper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -208,
+        -704
+      ],
+      "settings": {
+        "timeout": 300000
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "v-score-hardened",
+              "name": "viral_score",
+              "value": "={{ ( ($json.viewCount || $json.views || 0) > 0 ) ? ( ( (($json.likes || $json.likeCount || 0) * 1) + (($json.commentsCount || $json.commentCount || 0) * 3) ) / ($json.viewCount || $json.views) * 100 ) : 0 }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "b1ed19a3-ba6f-4888-a7dd-59ea9f578d71",
+      "name": "Viral Logic Engine",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "f1f5e81d-070c-4c21-a145-6e2df02ad830",
+      "name": "OpenAI Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1216,
+        -480
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "video-title",
+              "name": "video_title",
+              "value": "={{ $(\"Limit Top Videos\").item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "video-url",
+              "name": "video_url",
+              "value": "={{ $(\"Limit Top Videos\").item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "views",
+              "name": "views",
+              "value": "={{ $(\"Limit Top Videos\").item.json.viewCount }}",
+              "type": "number"
+            },
+            {
+              "id": "viral-score",
+              "name": "viral_score",
+              "value": "={{ $(\"Limit Top Videos\").item.json.viral_score }}",
+              "type": "number"
+            },
+            {
+              "id": "likes",
+              "name": "likes",
+              "value": "={{ $(\"Limit Top Videos\").item.json.likes || $(\"Limit Top Videos\").item.json.likeCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "comments",
+              "name": "comments",
+              "value": "={{ $(\"Limit Top Videos\").item.json.commentsCount || $(\"Limit Top Videos\").item.json.commentCount || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "channel",
+              "name": "channel_name",
+              "value": "={{ $(\"Limit Top Videos\").item.json.channelName }}",
+              "type": "string"
+            },
+            {
+              "id": "channel-url",
+              "name": "channel_url",
+              "value": "={{ $(\"Limit Top Videos\").item.json.channelUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "ai-summary",
+              "name": "summary",
+              "value": "={{ $json.output.split(\"|||\")[0].replace(/[*#_`]/g, '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "ready-comment",
+              "name": "ready_comment",
+              "value": "={{ $json.output.split(\"|||\")[1].replace(/[*#_`]/g, '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "reshare-caption",
+              "name": "reshare_caption",
+              "value": "={{ $json.output.split(\"|||\")[2].replace(/[*#_`]/g, '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "original-content",
+              "name": "original_content",
+              "value": "={{ $json.output.split(\"|||\")[3].replace(/[*#_`]/g, '').trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a99ff54d-e6cb-40db-85ad-e628fc8faede",
+      "name": "Prepare Sheet Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1488,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.viewCount }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 5000,
+              "id": "27c313c2-a40c-421f-98e4-671b988fef97"
+            },
+            {
+              "leftValue": "={{ $json.viral_score }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 2.5,
+              "id": "032a6497-1578-4797-a42f-01594b3de35c"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "740e675a-ad49-4bd4-896a-0303fd300fa3",
+      "name": "Filter Viral Videos",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        464,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "viral_score",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "32a07cdc-d85a-401f-b739-fc612902fead",
+      "name": "Sort by Viral Score",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        688,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "id": "f8451c1d-a13b-45bc-b785-5220a689ae6c",
+      "name": "Limit Top Videos",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        912,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "videos",
+        "options": {}
+      },
+      "id": "3d573521-8fd6-458d-baa5-6b964b4dbe96",
+      "name": "Aggregate Report Data",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a content strategist. Based on this video data, provide exactly 4 outputs separated by \"|||\":\n\n1. A 3-4 sentence summary of what the video is about\n2. A ready-to-use comment that can be posted on this video (engaging, authentic, adds value)\n3. A reshare/repost caption for sharing this content on social media (compelling, includes context)\n4. An original content draft inspired by the same idea (brief outline or concept)\n\nCRITICAL RULES:\n- Output ONLY plain text, no Markdown formatting\n- Use exactly \"|||\" (three pipe characters) to separate each section\n- Keep each section concise and actionable\n- Do not include section numbers or labels in the output\n\nVideo Data:\nTitle: {{ $json.title }}\nChannel: {{ $json.channelName }}\nViews: {{ $json.viewCount }}\nDescription: {{ $json.text }}",
+        "options": {}
+      },
+      "id": "32f21707-6700-41ce-9689-e5c83a1b0fee",
+      "name": "AI Content Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1136,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "client@example.com",
+        "subject": "=Viral Video Shortlist - {{ $now.toFormat(\"MMMM d, yyyy\") }}",
+        "message": "=<html><head><style>body{font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;line-height:1.6;color:#1f2937;background:#f9fafb;margin:0;padding:0}.container{max-width:800px;margin:0 auto;background:#fff}.header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:40px 30px;text-align:center}.header h1{margin:0 0 10px 0;font-size:32px;font-weight:700}.header p{margin:5px 0;opacity:.95;font-size:16px}.summary{background:#f3f4f6;padding:20px 30px;border-bottom:3px solid #667eea}.summary-stat{display:inline-block;margin-right:30px}.summary-stat strong{color:#667eea;font-size:24px;display:block}.video-card{margin:0;padding:30px;border-bottom:1px solid #e5e7eb}.video-card:last-child{border-bottom:none}.video-rank{display:inline-block;background:#667eea;color:#fff;font-weight:700;font-size:18px;padding:8px 16px;border-radius:8px;margin-bottom:15px}.video-title{font-size:22px;font-weight:600;color:#111827;margin:10px 0 15px 0;line-height:1.3}.video-title a{color:#111827;text-decoration:none}.video-title a:hover{color:#667eea}.channel-info{color:#6b7280;font-size:14px;margin:10px 0}.channel-info a{color:#667eea;text-decoration:none;font-weight:600}.channel-info a:hover{text-decoration:underline}.video-meta{background:#f9fafb;padding:15px;border-radius:8px;margin:15px 0;display:flex;flex-wrap:wrap;gap:20px}.meta-item{flex:1;min-width:100px}.meta-label{font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:600;letter-spacing:.5px}.meta-value{font-size:18px;font-weight:700;color:#111827;margin-top:4px}.viral-badge{display:inline-block;background:linear-gradient(135deg,#f59e0b 0%,#ef4444 100%);color:#fff;padding:6px 14px;border-radius:20px;font-weight:700;font-size:14px}.video-link{display:inline-block;background:#667eea;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-weight:600;margin:10px 0}.video-link:hover{background:#5568d3}.content-section{margin-top:20px}.section-title{font-size:15px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}.section-content{background:#f9fafb;padding:18px;border-left:4px solid #667eea;border-radius:4px;line-height:1.7;color:#374151;font-size:14px}.footer{background:#1f2937;color:#9ca3af;text-align:center;padding:30px;font-size:13px}</style></head><body><div class=\"container\"><div class=\"header\"><h1>🎬 Viral Video Shortlist Report</h1><p>{{ $now.toFormat(\"EEEE, MMMM d, yyyy\") }}</p></div><div class=\"summary\"><div class=\"summary-stat\"><strong>{{ $json.videos.length }}</strong><span>Videos Analyzed</span></div><div class=\"summary-stat\"><strong>{{ $json.videos.reduce((sum, v) => sum + v.views, 0).toLocaleString() }}</strong><span>Total Views</span></div><div class=\"summary-stat\"><strong>{{ ($json.videos.reduce((sum, v) => sum + v.viral_score, 0) / $json.videos.length).toFixed(1) }}</strong><span>Avg Viral Score</span></div></div>{{ $json.videos.map((v, i) => '<div class=\"video-card\"><span class=\"video-rank\">#' + (i + 1) + '</span><h2 class=\"video-title\"><a href=\"' + v.video_url + '\" target=\"_blank\">' + v.video_title + '</a></h2><p class=\"channel-info\">📺 <a href=\"' + (v.channel_url || \"#\") + '\" target=\"_blank\">' + v.channel_name + '</a></p><div class=\"video-meta\"><div class=\"meta-item\"><div class=\"meta-label\">Viral Score</div><div class=\"meta-value\"><span class=\"viral-badge\">' + v.viral_score.toFixed(2) + '</span></div></div><div class=\"meta-item\"><div class=\"meta-label\">Views</div><div class=\"meta-value\">👁️ ' + v.views.toLocaleString() + '</div></div><div class=\"meta-item\"><div class=\"meta-label\">Likes</div><div class=\"meta-value\">👍 ' + v.likes.toLocaleString() + '</div></div><div class=\"meta-item\"><div class=\"meta-label\">Comments</div><div class=\"meta-value\">💬 ' + v.comments.toLocaleString() + '</div></div></div><a href=\"' + v.video_url + '\" class=\"video-link\" target=\"_blank\">▶️ Watch Video</a><div class=\"content-section\"><div class=\"section-title\">📝 Summary</div><div class=\"section-content\">' + v.summary + '</div></div><div class=\"content-section\"><div class=\"section-title\">💬 Ready-to-Use Comment</div><div class=\"section-content\">' + v.ready_comment + '</div></div><div class=\"content-section\"><div class=\"section-title\">🔄 Reshare Caption</div><div class=\"section-content\">' + v.reshare_caption + '</div></div><div class=\"content-section\"><div class=\"section-title\">✨ Original Content Draft</div><div class=\"section-content\">' + v.original_content + '</div></div></div>').join(\"\") }}</div></body></html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d19426da-502b-475f-be1e-b76072f4771c",
+      "name": "Send Email Report",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1936,
+        -800
+      ],
+      "webhookId": "",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Viral Video Content Translator Input",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "id": "183e4d99-f0b3-4084-9a40-ce3f750beffe",
+      "name": "New Row Added",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        -800
+      ],
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets Trigger OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "type": "code",
+        "code": "// Sort by row number in descending order to get the latest row first\n// Return 1 if a should go before b (b has higher row number)\n// Return -1 if b should go before a (a has higher row number)\n// Return 0 if there is no difference\n\nif (a.json.row_number > b.json.row_number) {\n  return -1;\n}\nif (a.json.row_number < b.json.row_number) {\n  return 1;\n}\nreturn 0;"
+      },
+      "id": "43ec40a5-6897-4276-8998-3cd9b2dd8b89",
+      "name": "Sort by Row",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "keep": "lastItems"
+      },
+      "id": "94581e7d-dcf7-407a-af68-5fcde42026af",
+      "name": "Get Latest Row Only",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "search-queries",
+              "name": "searchQueries",
+              "value": "={{ [$json.Keywords, ...($json.Keywords_group ? $json.Keywords_group.split(\",\").map(k => k.trim()) : []), ...($json[\"specific influencer\"] && $json[\"specific influencer\"] !== \"random\" ? [$json[\"specific influencer\"]] : [])].filter(q => q && q.length > 0) }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e135dae-5722-465b-a8a2-b8f979e6a119",
+      "name": "Build Search Queries",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -432,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Viral Video Content Translator",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_title",
+              "displayName": "video_title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "video_url",
+              "displayName": "video_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "views",
+              "displayName": "views",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "viral_score",
+              "displayName": "viral_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ready_comment",
+              "displayName": "ready_comment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reshare_caption",
+              "displayName": "reshare_caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "original_content",
+              "displayName": "original_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "likes",
+              "displayName": "likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "comments",
+              "displayName": "comments",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1712,
+        -608
+      ],
+      "id": "92dd0352-d2ff-40a6-981b-9c1460f01ec6",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "f566d6ec-4912-47e3-848a-276998282126",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -656,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months"
+            }
+          ]
+        }
+      },
+      "id": "a91dc2bd-4e34-4133-90c0-af9eaa082962",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1552,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Viral Video Content Translator Input",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "7764e18c-0989-4cee-b9fc-574255157585",
+      "name": "Fetch Input Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1328,
+        -592
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "id",
+        "options": {}
+      },
+      "id": "5f1ab689-f5e7-494b-89fd-64a2ba767b1b",
+      "name": "Remove Duplicate Videos",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 1.1,
+      "position": [
+        16,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "type": "code",
+        "code": "// Sort by row number in descending order to get the latest row first\n// Return 1 if a should go before b (b has higher row number)\n// Return -1 if b should go before a (a has higher row number)\n// Return 0 if there is no difference\n\nif (a.json.row_number > b.json.row_number) {\n  return -1;\n}\nif (a.json.row_number < b.json.row_number) {\n  return 1;\n}\nreturn 0;"
+      },
+      "id": "09d2d35c-f758-4853-bb02-f4d34bb75f73",
+      "name": "Sort by Row1",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "keep": "lastItems"
+      },
+      "id": "55072568-63b6-45af-a26e-850222751620",
+      "name": "Get Latest Row Only1",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -592
+      ]
+    }
+  ],
+  "connections": {
+    "YouTube Scraper": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicate Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Viral Logic Engine": {
+      "main": [
+        [
+          {
+            "node": "Filter Viral Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Content Analyzer",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Sheet Data": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Report Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Viral Videos": {
+      "main": [
+        [
+          {
+            "node": "Sort by Viral Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Viral Score": {
+      "main": [
+        [
+          {
+            "node": "Limit Top Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Top Videos": {
+      "main": [
+        [
+          {
+            "node": "AI Content Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Report Data": {
+      "main": [
+        [
+          {
+            "node": "Send Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Content Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Prepare Sheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New Row Added": {
+      "main": [
+        [
+          {
+            "node": "Sort by Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Row": {
+      "main": [
+        [
+          {
+            "node": "Get Latest Row Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest Row Only": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Search Queries": {
+      "main": [
+        [
+          {
+            "node": "YouTube Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Build Search Queries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Input Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Input Data": {
+      "main": [
+        [
+          {
+            "node": "Sort by Row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicate Videos": {
+      "main": [
+        [
+          {
+            "node": "Viral Logic Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Row1": {
+      "main": [
+        [
+          {
+            "node": "Get Latest Row Only1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest Row Only1": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": ""
+  }
+}
